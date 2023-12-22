@@ -38,3 +38,20 @@ CREATE TRIGGER trigger_check_teams_existence
 BEFORE INSERT ON Match
 FOR EACH ROW
 EXECUTE FUNCTION check_teams_existence();
+
+-- Триггер не дает удалять официальные турниры
+
+CREATE OR REPLACE FUNCTION prevent_delete_official_tournament()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.is_official THEN
+        RAISE EXCEPTION 'Cannot delete an official tournament';
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_delete_official_tournament_trigger
+BEFORE DELETE ON Tournament
+FOR EACH ROW
+EXECUTE FUNCTION prevent_delete_official_tournament();
