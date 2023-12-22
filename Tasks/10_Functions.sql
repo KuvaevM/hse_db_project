@@ -29,3 +29,30 @@ BEGIN
     VALUES (tournament_game_name, tournament_prize, tournament_name, start_date, end_date, official_status);
 END;
 $$ LANGUAGE plpgsql;
+
+-- Ищет матчи, количество зрителей на трансляциях которых выше среднего
+
+CREATE OR REPLACE PROCEDURE FindPopularMatches()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    average_viewers DECIMAL;
+    match_record RECORD;
+BEGIN
+    SELECT AVG(viewers_number) INTO average_viewers FROM Broadcasts;
+
+    FOR match_record IN
+        SELECT M.match_id, M.date, T1.team_name AS team1_name, T2.team_name AS team2_name, B.viewers_number
+        FROM Match M
+        JOIN Team T1 ON M.team_1 = T1.team_id
+        JOIN Team T2 ON M.team_2 = T2.team_id
+        LEFT JOIN Broadcasts B ON M.match_id = B.game_id
+        WHERE B.viewers_number > average_viewers
+        ORDER BY B.viewers_number DESC
+    LOOP
+        RAISE NOTICE 'Match ID: %, Date: %, Team 1: %, Team 2: %, Viewers: %',
+                     match_record.match_id, match_record.date, match_record.team1_name,
+                     match_record.team2_name, match_record.viewers_number;
+    END LOOP;
+END;
+$$;
